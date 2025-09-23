@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Jumbo (NL) → search (page-by-page) → detail → normalize → immediate DB upserts
 
@@ -693,7 +692,6 @@ def scrape_jumbo_once() -> int:
         logger.info("Jumbo page: begin processing", extra={"offset": offset, "page_size": len(stubs)})
 
         if fetch_details:
-            # Per-page pool so we stream this page fully before moving on
             stubs_by_sku = {s.get("id"): s for s in stubs if s.get("id")}
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futs = {ex.submit(_fetch_detail, client, sku): sku for sku in stubs_by_sku.keys()}

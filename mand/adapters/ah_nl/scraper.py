@@ -271,7 +271,6 @@ def scrape_ah_nl_once() -> int:
         category_slug = c["slug"]
         basics = _fetch_products_in_taxonomy(client, c["id"], category_slug, settings.ah_max_pages)
         if not basics:
-            # still save raw empty if you want a heartbeat row (optional)
             continue
 
         details_map: Dict[int, Optional[Dict]] = {}
@@ -294,8 +293,6 @@ def scrape_ah_nl_once() -> int:
         ]
         total += len(products)
 
-        # ✅ Save flat rows by KV (category slug)
-        # Optional: also save raw blob per product for audits.
         # ProductRepository.save_raw(SUPERMARKET["id"], category_slug, products)
         ProductRepository.upsert_flat(category_slug, products)
 
