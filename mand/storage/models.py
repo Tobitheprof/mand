@@ -1,11 +1,67 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Integer, Boolean, Numeric, JSON, DateTime, UniqueConstraint, Index, Text
+# models.py
+from __future__ import annotations
 from datetime import datetime, timezone
+from typing import List, Optional
+
+from sqlalchemy import (
+    String, Integer, Boolean, Numeric, JSON, DateTime, Text,
+    UniqueConstraint, Index, ForeignKey
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 
 class Base(DeclarativeBase):
     pass
 
-# Optional: keep raw capture if you still want it
+
+# ========== Reference Tables ==========
+
+class Supermarket(Base):
+    __tablename__ = "supermarkets"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # business id from scraper (e.g., "ah", "jumbo", "dirk")
+    code: Mapped[str] = mapped_column(String(32), unique=True, index=True)  # "ah", "jumbo"
+    name: Mapped[str] = mapped_column(String(128))
+    logo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    abbreviation: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    brand_color: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+
+    products: Mapped[List["Product"]] = relationship(back_populates="supermarket", cascade="all,delete-orphan")
+
+
+class InternalCategory(Base):
+    __tablename__ = "internal_categories"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # global internal taxonomy (your mapper’s output)
+    name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+
+    products: Mapped[List["Product"]] = relationship(back_populates="internal_category", cascade="all,delete-orphan")
+
+
+class StoreCategory(Base):
+    """
+    The supermarket's own native category (taxonomy leaf you store today).
+    Names are unique per supermarket, not globally.
+    """
+    __tablename__ = "store_categories"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    supermarket_id: Mapped[int] = mapped_column(ForeignKey("supermarkets.id", ondelete="CASCADE"), index=True)
+    code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)  # native id if available
+    name: Mapped[str] = mapped_column(String(128), index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    logo: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    supermarket: Mapped["Supermarket"] = relationship()
+    products: Mapped[List["Product"]] = relationship(back_populates="store_category")
+
+    __table_args__ = (
+        UniqueConstraint("supermarket_id", "name", name="uq_store_category_supermarket_name"),
+    )
+
+
+# ========== Optional raw capture (unchanged) ==========
+
 class ProductRaw(Base):
     __tablename__ = "products_raw"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -16,69 +72,64 @@ class ProductRaw(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
-# ✅ Flat, column-per-key representation
-class ProductFlat(Base):
-    __tablename__ = "products_flat"
+
+# ========== Products (replaces ProductFlat) ==========
+
+class Product(Base):
+    __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    # KV envelope info (key from "fruit-verse-sappen": [...])
+    # business key
+    product_id: Mapped[str] = mapped_column(String(64))  # store's id (e.g., SKU)
+    supermarket_id: Mapped[int] = mapped_column(ForeignKey("supermarkets.id", ondelete="CASCADE"))
+    # still useful for fast filters
     category_slug: Mapped[str] = mapped_column(String(128), index=True)
 
-    # Core product
-    product_id: Mapped[str] = mapped_column(String(64))
+    # text/core
     name_full: Mapped[str] = mapped_column(String(512))
     name_display: Mapped[str] = mapped_column(String(512))
-    description_full: Mapped[str | None] = mapped_column(Text, nullable=True)
-    description_display: Mapped[str | None] = mapped_column(Text, nullable=True)
-    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    keywords: Mapped[list] = mapped_column(JSON)  # list of strings
+    description_full: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description_display: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    keywords: Mapped[list] = mapped_column(JSON)  # list[str]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    parent_product_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    child_products: Mapped[list] = mapped_column(JSON)  # store child product dicts as JSON if any
+    parent_product_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    child_products: Mapped[list] = mapped_column(JSON)  # JSON array
 
-    # Supermarket
-    supermarket_id: Mapped[str] = mapped_column(String(32), index=True)
-    supermarket_name: Mapped[str] = mapped_column(String(128))
-    supermarket_logo: Mapped[str | None] = mapped_column(Text, nullable=True)
-    supermarket_abbreviation: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    supermarket_brand_color: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # FK relations
+    internal_category_id: Mapped[int] = mapped_column(ForeignKey("internal_categories.id", ondelete="SET NULL"), index=True)
+    store_category_id: Mapped[int] = mapped_column(ForeignKey("store_categories.id", ondelete="SET NULL"), index=True)
 
-    # Category (original from supermarket)
-    category_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
-    category_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    category_description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    category_logo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    supermarket: Mapped["Supermarket"] = relationship(back_populates="products")
+    internal_category: Mapped["InternalCategory"] = relationship(back_populates="products")
+    store_category: Mapped["StoreCategory"] = relationship(back_populates="products")
 
-    # Pricing
+    # pricing snapshot
     pricing_current: Mapped[Numeric] = mapped_column(Numeric(18, 2))
     pricing_original: Mapped[Numeric] = mapped_column(Numeric(18, 2))
     pricing_has_discount: Mapped[bool] = mapped_column(Boolean, default=False)
-    pricing_discount_percentage: Mapped[Numeric | None] = mapped_column(Numeric(8, 2), nullable=True)
-    pricing_product_type: Mapped[str] = mapped_column(String(32))  # BONUS / NOT_IN_BONUS / EXPIRED_BONUS (future)
+    pricing_discount_percentage: Mapped[Optional[Numeric]] = mapped_column(Numeric(8, 2), nullable=True)
+    pricing_product_type: Mapped[str] = mapped_column(String(32))  # BONUS / NOT_IN_BONUS / EXPIRED_BONUS
 
-    # Promotion data (flattened)
+    # promo snapshot (flattened)
     promo_has_promotion: Mapped[bool] = mapped_column(Boolean, default=False)
-    promo_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    promo_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    promo_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    promo_savings_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    promo_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    promo_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    promo_category: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    promo_savings_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     promo_qty_requires_min: Mapped[bool] = mapped_column(Boolean, default=False)
-    promo_qty_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    promo_qty_target: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    promo_qty_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
+    promo_qty_min: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    promo_qty_target: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    promo_qty_instruction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     promo_qty_action_required: Mapped[bool] = mapped_column(Boolean, default=False)
     promo_is_processed: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Internal category
-    internal_category_id: Mapped[int] = mapped_column(Integer, index=True)
-    internal_category_name: Mapped[str] = mapped_column(String(64))
-
-    # Uniqueness per supermarket
+    # helpful uniqueness & indexes
     __table_args__ = (
-        UniqueConstraint("product_id", "supermarket_id", name="uq_flat_product_supermarket"),
-        Index("ix_flat_supermarket_category", "supermarket_id", "category_slug"),
+        UniqueConstraint("product_id", "supermarket_id", name="uq_product_business_key"),
+        Index("ix_products_supermarket_category", "supermarket_id", "category_slug"),
     )
