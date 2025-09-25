@@ -31,6 +31,8 @@ class Settings:
     AH_WORKERS: int = int(os.getenv("AH_WORKERS", "16"))
     AH_FETCH_DETAILS: bool = os.getenv("AH_FETCH_DETAILS", "true").lower() == "true"
     AH_MAX_PAGES_PER_CATEGORY: str = os.getenv("AH_MAX_PAGES_PER_CATEGORY", "")
+
+    
     @property
     def ah_max_pages(self):
         return int(self.AH_MAX_PAGES_PER_CATEGORY) if self.AH_MAX_PAGES_PER_CATEGORY.isdigit() else None
