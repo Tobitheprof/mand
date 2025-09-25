@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 SUPERMARKET = {
     "id": "dirk", "name": "Dirk",
-    "logo": "https://d3r3h30p75xj6a.cloudfront.net/files/9/4/6/9/0/2/WS_1080x1080_dirk-logo.png?width=400", "abbreviation": "Dirk",
-    "brand_color": "#FF0000"
+    "logo": None, "abbreviation": "Dirk",
+    "brand_color": None
 }
 
 BASE = "https://web-dirk-gateway.detailresult.nl"
@@ -321,7 +321,7 @@ def _to_record(d: Dict, mapper: InternalCategoryMapper) -> Optional[Dict]:
 # ---------------- core scrape with de-dup ----------------
 @timed
 def scrape_dirk_once() -> int:
-    client = DirkClient(workers=16)
+    client = DirkClient(workers=settings.DIRK_WORKERS)
     mapper = InternalCategoryMapper()
 
     total = 0
