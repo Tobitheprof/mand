@@ -131,15 +131,25 @@ def _extract_image_url(basic: Dict, dprod: Dict) -> Optional[str]:
                         return item["url"]
     return None
 
-def _promo_data(basic: Dict) -> Dict:
+def _promo_data(basic: Dict, dprod: Optional[Dict] = None) -> Dict:
     res = {
-        "hasPromotion": False, "text": None, "type": None, "category": None,
-        "savingsType": None, "quantityRequirements": {
-            "requiresMinimumQuantity": False, "minimumQuantity": None,
-            "targetQuantity": None, "userInstruction": None, "actionRequired": False
+        "hasPromotion": False,
+        "text": None,
+        "type": None,
+        "category": None,
+        "savingsType": None,
+        "quantityRequirements": {
+            "requiresMinimumQuantity": False,
+            "minimumQuantity": None,
+            "targetQuantity": None,
+            "userInstruction": None,
+            "actionRequired": False
         },
-        "isProcessed": True
+        "isProcessed": True,
+        "bonus": None  # new: store raw bonus info
     }
+
+    # old shield/discount parsing
     shield_text = (basic.get("shield") or {}).get("text")
     disc = (basic.get("discount") or {})
     pnow = (basic.get("price") or {}).get("now")
@@ -156,29 +166,30 @@ def _promo_data(basic: Dict) -> Dict:
         if not res["text"]:
             res["text"] = f"Was €{pwas:.2f}, now €{pnow:.2f}"
 
-    txt = (res["text"] or "").lower()
-    if res["hasPromotion"]:
-        if "gratis" in txt or re.search(r"\d+\+\d+", txt):
-            res.update({"type":"buy_get_free","category":"quantity","savingsType":"free_items"})
-            m = re.search(r"(\d+)\+(\d+)", txt)
-            if m:
-                b, f = int(m.group(1)), int(m.group(2))
-                res["quantityRequirements"].update({
-                    "requiresMinimumQuantity": True, "minimumQuantity": b,
-                    "targetQuantity": b+f, "userInstruction": f"Koop {b} stuks en krijg {f} gratis",
-                    "actionRequired": True
-                })
-        elif "voor" in txt and re.search(r"\d+\s*voor\s*\d+(\.\d{2})?", txt):
-            res.update({"type":"multi_buy_price","category":"quantity","savingsType":"special_price"})
-            q = int(re.search(r"(\d+)\s*voor", txt).group(1))
-            res["quantityRequirements"].update({
-                "requiresMinimumQuantity": True, "minimumQuantity": q,
-                "targetQuantity": q, "userInstruction": f"Koop {q} stuks voor speciale prijs",
-                "actionRequired": True
-            })
-        else:
-            res.update({"type":"discount","category":"discount","savingsType":"price_reduction"})
+    # NEW: bonus info from detailed product
+    if dprod:
+        p2 = (((dprod or {}).get("data") or {}).get("product") or {}).get("priceV2") or {}
+        discount = p2.get("discount") or {}
+        shields = p2.get("promotionShields") or []
+        if discount or shields:
+            res["hasPromotion"] = True
+            res["text"] = (res["text"] or discount.get("description") or
+                           (shields[0].get("text")[0] if shields and shields[0].get("text") else None))
+            res["type"] = "BONUS"
+            res["category"] = "discount"
+            res["savingsType"] = "price_reduction"
+            res["bonus"] = {
+                "description": discount.get("description"),
+                "promotionType": discount.get("promotionType"),
+                "segmentType": discount.get("segmentType"),
+                "theme": discount.get("theme"),
+                "startDate": (discount.get("availability") or {}).get("startDate"),
+                "endDate": (discount.get("availability") or {}).get("endDate"),
+                "wasPriceVisible": discount.get("wasPriceVisible"),
+            }
+
     return res
+
 
 # ---------- core scrape ----------
 def _fetch_products_in_taxonomy(client: AHClient, taxonomy_id: str, taxonomy_slug: str, max_pages: Optional[int]) -> List[Dict]:
@@ -256,7 +267,7 @@ def _to_record(basic: Dict, dprod: Optional[Dict], mapper: InternalCategoryMappe
         "supermarket": supermarket_obj,
         "category": category_obj,
         "pricing": pricing_obj,
-        "promotion_data": _promo_data(basic),
+        "promotion_data": _promo_data(basic, d),
         "internal_category": internal_cat
     }
 

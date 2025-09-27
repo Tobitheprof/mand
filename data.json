@@ -1,0 +1,274 @@
+{
+    "data": {
+        "product": {
+            "id": 408472,
+            "hqId": 34984,
+            "title": "DKNY Be delicious fresh blossom",
+            "brand": "DKNY",
+            "category": "AH Voordeelshop/Persoonlijke verzorging",
+            "webPath": "/producten/product/wi408472/dkny-be-delicious-fresh-blossom",
+            "summary": "<p><strong>Eau de Parfum</strong>&nbsp;</p>\n<p><strong>Sprankelende frisheid met een bloemig-orientale touch: </strong>Een unieke combinatie van energieke grapefruit, romantische roos, en sensuele jasmijn, perfect voor de moderne vrouw.<br> <br><strong>Veelzijdigheid voor elke gelegenheid</strong>: Deze geur biedt een perfecte balans tussen verfrissende en sensuele tonen, waardoor het geschikt is voor zowel dagelijks gebruik als speciale momenten.<br> <br><strong>Gemakkelijk en elegant in gebruik: </strong>Dankzij de handige spraydispenser kun je moeiteloos genieten van een vleugje luxe, waar en wanneer je maar wilt.</p>\n<p>Parfum voor haar<br>Gratis thuisbezorgd binnen 2-3 werkdagen* <br>Gratis retourneren binnen 14 werkdagen** <br>OP = OP</p>\n<p><span style=\"font-size: 12px;\">* Gratis thuisbezorging geldt alleen binnen Nederland. Bestellen voor levering in het buitenland is niet mogelijk.  </span><br><span style=\"font-size: 12px;\">** Retourneren kan alleen wanneer het product voldoet aan de retourvoorwaarden.</span></p><p>Dit product wordt verkocht door: <a href=\"https://voordeelshop.ah.nl/content-provider-best-beauty-lux\">Best Beauty Lux</a></p>",
+            "additionalInformation": "<H4>Beschrijving</H4> <p><strong>Ontdek DKNY Be Delicious Fresh Blossom Eau de parfum</strong><br>Verlies jezelf in de sprankelende wereld van luxe met de betoverende geur van DKNY Be Delicious Fresh Blossom. Dit bloemig-oriental parfum, speciaal ontworpen voor de moderne vrouw, omarmt je met een frisse en levendige uitstraling die perfect is voor elke gelegenheid.<br> <br><strong>Verkwikkende geurnoten</strong><br>Bij het eerste contact voel je de opzwepende topnoten van grapefruit, die je zintuigen direct prikkelen en een gevoel van energie geven. Zodra deze frisse opening vervaagt, komt het hart van het parfum naar voren, waar delicate rozen je omarmen met hun romantische allure. De basisnoot van jasmijn zorgt voor een sensuele afsluiting, waardoor het parfum een blijvende indruk achterlaat.<br> <br><strong>De perfecte finishing touch</strong><br>Met zijn elegante uitstraling en verfijnde samenstelling is dit parfum niet alleen een geur, maar een ware ervaring. De spraydispenser maakt het gemakkelijk om jezelf te omhullen in deze sublieme geur, zodat je altijd kunt genieten van een vleugje luxe. Het is de ideale aanvulling op jouw dagelijkse routine of als een bijzondere traktatie voor speciale momenten.</p>\n<H4>Specificaties</H4> <ul>\n<li>Bloemig-orientale geurprofiel&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li>Verfrissende topnoten van grapefruit&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li>Romantische hartnoten van roos&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li>Sensuele basisnoot van jasmijn&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li>Eenvoudige spraydispenser voor gebruiksgemak&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li>Laat je verleiden door de onweerstaanbare charme van DKNY Be Delicious Fresh Blossom en voeg een sprankeltje verfijning toe aan jouw parfumcollectie. Deze geur nodigt uit tot zelfexpressie en zorgt ervoor dat   jij je altijd op je best voelt.</li>\n</ul>\n<H4>Verzenden & Retourneren</H4> <p><strong>Verzending:</strong></p>\n<ul>\n<li>Gratis thuisbezorgd binnen 2-3 werkdagen*</li>\n<li>Je ontvangt een Track &amp; Trace code zodra jouw bestelling is verzonden</li>\n</ul>\n<p><strong>Retourneren:</strong></p>\n<ul>\n<li>Gratis retourneren binnen 14 werkdagen</li>\n</ul>\n<H4>Veelgestelde vragen </H4> <p>Vind <a href=\"https://voordeelshop.ah.nl/content-provider-best-beauty-lux/\" target=\"_self\">hier</a> de veelgestelde vragen.</p>\n",
+            "salesUnitSize": "per stuk",
+            "minBestBeforeDays": null,
+            "isDeactivated": false,
+            "__typename": "Product",
+            "interactionLabel": null,
+            "icons": [
+                "AVAILABLE_IN_STORE"
+            ],
+            "isSample": false,
+            "shopType": "AH",
+            "privateLabel": false,
+            "isMedicine": false,
+            "isMedicalDevice": false,
+            "listPrice": null,
+            "highlight": null,
+            "highlights": [
+                "Bloemige geur",
+                "Eau de Parfum",
+                "Voor haar"
+            ],
+            "imagePack": [
+                {
+                    "angle": "HERO",
+                    "small": {
+                        "url": "https://static.ah.nl/dam/product/AHI_6e70576542794d66536932475f445341324232596b41?revLabel=1&rendition=200x200_JPG_Q85&fileType=binary",
+                        "width": 200,
+                        "height": 200,
+                        "__typename": "ProductImageRendition"
+                    },
+                    "medium": {
+                        "url": "https://static.ah.nl/dam/product/AHI_6e70576542794d66536932475f445341324232596b41?revLabel=1&rendition=400x400_JPG_Q85&fileType=binary",
+                        "width": 400,
+                        "height": 400,
+                        "__typename": "ProductImageRendition"
+                    },
+                    "large": {
+                        "url": "https://static.ah.nl/dam/product/AHI_6e70576542794d66536932475f445341324232596b41?revLabel=1&rendition=800x800_JPG_Q90&fileType=binary",
+                        "width": 800,
+                        "height": 800,
+                        "__typename": "ProductImageRendition"
+                    },
+                    "__typename": "ProductImage"
+                }
+            ],
+            "taxonomyPath": [
+                {
+                    "id": 20603,
+                    "name": "AH Voordeelshop",
+                    "slugifiedName": "ah-voordeelshop",
+                    "active": true,
+                    "__typename": "ProductTaxonomyPath"
+                },
+                {
+                    "id": 21047,
+                    "name": "Persoonlijke verzorging",
+                    "slugifiedName": "persoonlijke-verzorging",
+                    "active": true,
+                    "__typename": "ProductTaxonomyPath"
+                }
+            ],
+            "availability": {
+                "maxUnits": null,
+                "isOrderable": true,
+                "isVisible": true,
+                "availabilityLabel": null,
+                "online": {
+                    "status": "AVAILABLE",
+                    "availableFrom": null,
+                    "__typename": "ProductAvailabilityIndication"
+                },
+                "unavailableForOrder": null,
+                "__typename": "ProductAvailability"
+            },
+            "taxonomies": [
+                {
+                    "id": 20603,
+                    "name": "AH Voordeelshop",
+                    "active": true,
+                    "parents": [
+                        0
+                    ],
+                    "__typename": "ProductTaxonomy"
+                },
+                {
+                    "id": 21047,
+                    "name": "Persoonlijke verzorging",
+                    "active": true,
+                    "parents": [
+                        20603
+                    ],
+                    "__typename": "ProductTaxonomy"
+                }
+            ],
+            "tradeItem": null,
+            "priceV2": {
+                "now": {
+                    "amount": 19.95,
+                    "formattedV2": "€19.95",
+                    "__typename": "Money"
+                },
+                "was": {
+                    "amount": 48,
+                    "__typename": "Money"
+                },
+                "unitInfo": null,
+                "discount": {
+                    "description": "BONUS",
+                    "promotionType": "NATIONAL",
+                    "segmentType": "AH",
+                    "subtitle": "Ga naar de volgende stap om te zien of dit product in aanmerking komt voor extra Air Miles korting",
+                    "theme": "BONUS",
+                    "tieredOffer": [],
+                    "wasPriceVisible": true,
+                    "smartLabel": null,
+                    "productCount": 668,
+                    "availability": {
+                        "startDate": "2024-11-04",
+                        "endDate": "2025-12-31",
+                        "__typename": "BonusSegmentAvailability"
+                    },
+                    "__typename": "ProductPriceDiscountV2"
+                },
+                "promotionShields": [
+                    {
+                        "text": [
+                            "BONUS"
+                        ],
+                        "emphasis": "DEFAULT",
+                        "theme": "BONUS",
+                        "defaultDescription": "BONUS",
+                        "title": null,
+                        "topText": "BONUS",
+                        "centerText": null,
+                        "bottomText": null,
+                        "__typename": "BonusSegmentDiscountShield"
+                    }
+                ],
+                "__typename": "ProductPriceV2"
+            },
+            "virtualBundleProducts": null,
+            "variant": null,
+            "variants": [],
+            "properties": [
+                {
+                    "code": "np_vdshop",
+                    "values": [
+                        "https://voordeelshop.ah.nl/persoonlijke-verzorging/parfum/828/dkny-be-delicious-fresh-blossom-edp-spray-30-ml/292609/?utm_source=AH&utm_medium=link&utm_campaign=vds_int"
+                    ],
+                    "__typename": "ProductProperty"
+                }
+            ],
+            "otherSorts": [
+                {
+                    "id": 588845,
+                    "hqId": 35023,
+                    "title": "DKNY Golden delicious",
+                    "brand": "DKNY",
+                    "category": "AH Voordeelshop/Persoonlijke verzorging",
+                    "webPath": "/producten/product/wi588845/dkny-golden-delicious",
+                    "salesUnitSize": "per stuk",
+                    "interactionLabel": null,
+                    "icons": [
+                        "AVAILABLE_IN_STORE"
+                    ],
+                    "isSample": false,
+                    "shopType": "AH",
+                    "highlight": null,
+                    "highlights": null,
+                    "isSponsored": null,
+                    "isMedicine": false,
+                    "isMedicalDevice": false,
+                    "privateLabel": false,
+                    "listPrice": null,
+                    "additionalInformation": "<H4>Beschrijving</H4> <p><strong>Ervaar de luxe van DKNY Golden Delicious Eau de Parfum<br></strong>Stap in een wereld van verfijning met de betoverende geur van DKNY Golden Delicious. Deze elegante eau de parfum is een ode aan de moderne vrouw, die weet wat ze wil en dit met stijl en allure uitdrukt. De geur opent met een frisse explosie van topnoten zoals sappige appel, delicate sinaasappelbloesem en een vleugje pruim. Dit zorgt voor een sprankelende start die je zintuigen prikkelt.<br> <br><strong>Hartnoten vol florale pracht</strong><br>In het hart van deze geur ontvouwt zich een luxueuze mix van lelietjes-van-dalen, lelies, orchideeën en rozen. Deze florale symfonie omarmt je als een zachte bries, waardoor elke druppel een gevoel van elegantie en verfijning uitstraalt. Het is alsof je door een bloeiende tuin wandelt, waar elke bloem haar eigen verhaal vertelt.<br> <br><strong>Diepe basisnoten voor blijvende indruk<br></strong>Terwijl de geur zich verder ontwikkelt, komen de warme basisnoten van hout en muskus naar voren. Deze rijke ondertonen geven de parfum een aardse diepte   en zorgen ervoor dat je geur lang aanhoudt, waardoor je altijd zelfverzekerd en onweerstaanbaar bent.<br> <br>&nbsp;&nbsp;&nbsp;</p>\n<H4>Specificaties</H4> <ul>\n<li><strong>Topnoten: </strong>Appel, Sinaasappelbloesem, Pruim&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li><strong>Hartnoten: </strong>Lelietje van Dalen, Lelie, Orchidee, Roos&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li><strong>Basisnoten: </strong>Hout, Muskus&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li><strong>Geurprofiel</strong>: Fris en bloemig&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li>Perfect voor de moderne vrouw die luxe waardeert&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>\n<li>Laat jezelf omarmen door de verfijnde charme van DKNY Golden Delicious    een geur die niet alleen je huid, maar ook je ziel verrijkt. Maak elke dag   bijzonder met deze luxe parfum die perfect is voor elke gelegenheid.</li>\n</ul>\n<H4>Verzenden & Retourneren</H4> <p><strong>Verzending:</strong></p>\n<ul>\n<li>Gratis thuisbezorgd binnen 2-3 werkdagen*</li>\n<li>Je ontvangt een Track &amp; Trace code zodra jouw bestelling is verzonden</li>\n</ul>\n<p><strong>Retourneren:</strong></p>\n<ul>\n<li>Gratis retourneren binnen 14 werkdagen</li>\n</ul>\n<H4>Veelgestelde vragen </H4> <p>Vind <a href=\"https://voordeelshop.ah.nl/content-provider-best-beauty-lux/\" target=\"_self\">hier</a> de veelgestelde vragen.</p>\n",
+                    "imagePack": [
+                        {
+                            "angle": "HERO",
+                            "small": {
+                                "height": 200,
+                                "url": "https://static.ah.nl/dam/product/AHI_4354523130313632383834?revLabel=1&rendition=200x200_JPG_Q85&fileType=binary",
+                                "width": 200,
+                                "__typename": "ProductImageRendition"
+                            },
+                            "__typename": "ProductImage"
+                        }
+                    ],
+                    "availability": {
+                        "maxUnits": null,
+                        "isOrderable": true,
+                        "isVisible": true,
+                        "availabilityLabel": null,
+                        "online": {
+                            "status": "AVAILABLE",
+                            "availableFrom": null,
+                            "__typename": "ProductAvailabilityIndication"
+                        },
+                        "unavailableForOrder": null,
+                        "__typename": "ProductAvailability"
+                    },
+                    "tradeItem": null,
+                    "priceV2": {
+                        "now": {
+                            "amount": 19.95,
+                            "formattedV2": "€19.95",
+                            "__typename": "Money"
+                        },
+                        "was": {
+                            "amount": 48,
+                            "__typename": "Money"
+                        },
+                        "unitInfo": null,
+                        "discount": {
+                            "description": "BONUS",
+                            "promotionType": "NATIONAL",
+                            "segmentType": "AH",
+                            "subtitle": "Ga naar de volgende stap om te zien of dit product in aanmerking komt voor extra Air Miles korting",
+                            "theme": "BONUS",
+                            "tieredOffer": [],
+                            "wasPriceVisible": true,
+                            "smartLabel": null,
+                            "productCount": 668,
+                            "availability": {
+                                "startDate": "2024-11-04",
+                                "endDate": "2025-12-31",
+                                "__typename": "BonusSegmentAvailability"
+                            },
+                            "__typename": "ProductPriceDiscountV2"
+                        },
+                        "promotionShields": [
+                            {
+                                "text": [
+                                    "BONUS"
+                                ],
+                                "emphasis": "DEFAULT",
+                                "theme": "BONUS",
+                                "defaultDescription": "BONUS",
+                                "title": null,
+                                "topText": "BONUS",
+                                "centerText": null,
+                                "bottomText": null,
+                                "__typename": "BonusSegmentDiscountShield"
+                            }
+                        ],
+                        "__typename": "ProductPriceV2"
+                    },
+                    "virtualBundleProducts": null,
+                    "variant": null,
+                    "variants": [],
+                    "properties": [
+                        {
+                            "code": "np_vdshop",
+                            "values": [
+                                "https://voordeelshop.ah.nl/persoonlijke-verzorging/parfum/828/dkny-golden-delicious-edp-spray-30-ml/294667/?utm_source=AH&utm_medium=link&utm_campaign=vds_int"
+                            ],
+                            "__typename": "ProductProperty"
+                        }
+                    ],
+                    "__typename": "Product"
+                }
+            ]
+        }
+    }
+}
