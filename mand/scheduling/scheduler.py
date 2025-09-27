@@ -4,7 +4,7 @@ from apscheduler.triggers.cron import CronTrigger
 from mand.config.settings import settings
 from mand.config.logging import configure_logging
 from mand.monitoring.metrics import ensure_metrics_server
-from mand.scheduling.jobs import job_scrape_ah_nl
+from mand.scheduling.jobs import job_scrape_ah_nl, job_scrape_dirk, job_scrape_jumbo
 
 def start_scheduler():
     configure_logging()
@@ -13,4 +13,7 @@ def start_scheduler():
 
     sched = BlockingScheduler(timezone=settings.SCHEDULER_TIMEZONE)
     sched.add_job(job_scrape_ah_nl, CronTrigger.from_crontab("7 * * * *"), id="ah_nl_hourly")
+    sched.add_job(job_scrape_dirk, CronTrigger.from_crontab("7 * * * *"), id="adirk_hourly")
+    sched.add_job(job_scrape_jumbo, CronTrigger.from_crontab("7 * * * *"), id="jumbo_hourly")
+
     sched.start()

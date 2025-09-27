@@ -1,15 +1,30 @@
 
 # MAND — Supermarket Scrapers
 
-MAND collects product data from multiple NL supermarkets, normalizes it to a standard schema, and stores it in a relational database with proper foreign keys (Supermarkets → Products, Internal Categories → Products, Store Categories → Products).
+MAND collects product data from multiple NL supermarkets, normalizes it to a standard schema, and stores it in a relational database with proper foreign keys:
 
-## What’s inside
+-   **Supermarkets → Products**
+    
+-   **Internal Categories → Products**
+    
+-   **Store Categories → Products**
+    
+
+----------
+
+## 📦 What’s inside
 
 -   **Adapters**: per-supermarket scrapers (e.g. `ah_nl`, `jumbo_nl`)
     
--   **Normalization**: price/promo parsing + data sanitation (removes zero-width chars, normalizes whitespace, validates URLs, etc.)
+-   **Normalization**: price/promo parsing + data sanitation
     
--   **Storage**: SQLAlchemy models with **FKs**:
+    -   Removes zero-width chars
+        
+    -   Normalizes whitespace
+        
+    -   Validates URLs, colors
+        
+-   **Storage**: SQLAlchemy models with FKs:
     
     -   `supermarkets` (code/name/etc.)
         
@@ -19,7 +34,7 @@ MAND collects product data from multiple NL supermarkets, normalizes it to a sta
         
     -   `products` (current snapshot + promo/pricing)
         
-    -   (optional) `products_raw` (audit trail)
+    -   `products_raw` (optional audit trail)
         
 -   **Monitoring**: `@timed` decorator hooks for instrumentation
     
@@ -28,74 +43,80 @@ MAND collects product data from multiple NL supermarkets, normalizes it to a sta
 
 ----------
 
-## Requirements
+## ⚙️ Requirements
 
 -   Python **3.9+**
     
--   A PostgreSQL database (set `PG_DSN`)
+-   PostgreSQL database (`PG_DSN`)
     
 -   Network egress to supermarket APIs
     
 
-### Python deps
+### Python dependencies
 
-They’re declared in `pyproject.toml`:
+Declared in `pyproject.toml`:
 
 `APScheduler==3.10.4  requests==2.32.3  urllib3==2.2.3  fake-useragent==1.5.1  SQLAlchemy==2.0.36  psycopg2-binary==2.9.9  prometheus-client==0.21.0` 
 
-Optional (if you plan DB migrations): `alembic>=1.13.1`
+Optional (for migrations):
+
+`alembic>=1.13.1` 
 
 ----------
 
-## Quick start
+## 🚀 Quick start
 
 `# 1) create & activate a virtualenv python -m venv .venv
-. .venv/bin/activate # Windows: .venv\Scripts\activate  # 2) install the package (editable dev mode) pip install -e . # 3) set your environment (minimal)  export PG_DSN="postgresql+psycopg2://user:pass@localhost:5432/mand"  # scraper tuning (optional—see Configuration below)  export AH_WORKERS=12 export AH_FETCH_DETAILS=1 export JUMBO_WORKERS=12 export JUMBO_FETCH_DETAILS=1 # 4) run a scraper once (examples below) python -c "from mand.adapters.ah_nl import scrape_ah_nl_once; print(scrape_ah_nl_once())" python -c "from mand.adapters.jumbo_nl import scrape_jumbo_once; print(scrape_jumbo_once())"` 
+. .venv/bin/activate # Windows: .venv\Scripts\activate  # 2) install the package (editable dev mode) pip install -e . # 3) set your environment (minimal)  export PG_DSN="postgresql+psycopg2://user:pass@localhost:5432/mand"  # scraper tuning (optional)  export AH_WORKERS=12 export AH_FETCH_DETAILS=1 export JUMBO_WORKERS=12 export JUMBO_FETCH_DETAILS=1 # 4) run a scraper once python -c "from mand.adapters.ah_nl import scrape_ah_nl_once; print(scrape_ah_nl_once())" python -c "from mand.adapters.jumbo_nl import scrape_jumbo_once; print(scrape_jumbo_once())"` 
 
-> If your module paths differ (e.g. you placed the functions in submodules), adjust the imports accordingly. The entry functions are `scrape_ah_nl_once()` and `scrape_jumbo_once()`.
+> Adjust imports if your module paths differ. Entrypoints are `scrape_ah_nl_once()` and `scrape_jumbo_once()`.
 
 ----------
 
-## Configuration
+## ⚙️ Configuration
 
-All runtime config is read from `mand.config.settings.settings`. You can source these from env vars or your own settings module; here are the variables the scrapers and storage expect:
+All runtime config is read from `mand.config.settings.settings`.  
+You can source these from environment variables or a settings module.
 
 ### Database
 
--   `PG_DSN` _(required)_ — e.g. `postgresql+psycopg2://user:pass@localhost:5432/mand`
+-   `PG_DSN` _(required)_  
+    Example: `postgresql+psycopg2://user:pass@localhost:5432/mand`
     
 
 ### Albert Heijn (ah.nl)
 
--   `AH_WORKERS` _(int, default: sensible)_ — thread pool size for detail fetches
+-   `AH_WORKERS` _(int, default sensible)_ — thread pool size
     
--   `AH_FETCH_DETAILS` _(bool/int, default: 1)_ — fetch GraphQL detail per product
+-   `AH_FETCH_DETAILS` _(bool/int, default 1)_ — fetch GraphQL detail
     
--   `ah_max_pages` _(int|None)_ — cap pages during development/testing
+-   `AH_MAX_PAGES` _(int|None)_ — cap pages during dev/testing
     
 
 ### Jumbo (jumbo.com)
 
--   `JUMBO_WORKERS` _(int, default: 12)_ — thread pool size per page
+-   `JUMBO_WORKERS` _(int, default 12)_ — thread pool size
     
--   `JUMBO_FETCH_DETAILS` _(bool/int, default: 1)_ — fetch product detail
+-   `JUMBO_FETCH_DETAILS` _(bool/int, default 1)_ — fetch product detail
     
--   `JUMBO_MAX_PAGES` _(int|None)_ — cap crawl pages during dev
+-   `JUMBO_MAX_PAGES` _(int|None)_ — cap crawl pages
     
--   `JUMBO_PAGE_SIZE` _(int, default: 24)_ — search page size
+-   `JUMBO_PAGE_SIZE` _(int, default 24)_ — search page size
     
--   `JUMBO_DELAY_BETWEEN_PAGES` _(seconds, default: 0.25)_
+-   `JUMBO_DELAY_BETWEEN_PAGES` _(seconds, default 0.25)_
     
--   `JUMBO_DELAY_BETWEEN_DETAILS` _(seconds, default: 0.10)_
+-   `JUMBO_DELAY_BETWEEN_DETAILS` _(seconds, default 0.10)_
     
--   `JUMBO_REQUEST_TIMEOUT` _(seconds, default: 20)_
+-   `JUMBO_REQUEST_TIMEOUT` _(seconds, default 20)_
     
 -   `JUMBO_SEARCH_TERMS` _(string, default: "producten")_
     
 
-### Logging
+----------
 
-Use standard logging configuration. Example:
+## 📝 Logging
+
+Use standard logging config. Example:
 
 `# run_logging.py  import logging, sys
 logging.basicConfig(
@@ -104,22 +125,22 @@ logging.basicConfig(
 ) from mand.adapters.jumbo_nl import scrape_jumbo_once
 scrape_jumbo_once()` 
 
-You’ll see structured `logger.info(...)` with `extra={...}` for:
+You’ll see structured logs (`logger.info(...)`) with `extra={...}`:
 
--   page offsets and counts
+-   Page offsets & counts
     
--   queued/fetched detail SKUs and titles
+-   Queued/fetched SKUs & titles
     
--   each product upsert (sku/title/category_slug/discount flags)
+-   Each product upsert (sku/title/category_slug/discount flags)
     
--   totals per page and overall
+-   Totals per page and overall
     
 
 ----------
 
-## Data model (overview)
+## 🗄 Data model (overview)
 
-**Reference tables**
+### Reference tables
 
 -   `supermarkets(id, code, name, logo, abbreviation, brand_color)`
     
@@ -128,10 +149,10 @@ You’ll see structured `logger.info(...)` with `extra={...}` for:
 -   `store_categories(id, supermarket_id(FK), code, name, description, logo)`
     
 
-**Fact table**
+### Fact table
 
--   `products`  
-    Unique on `(product_id, supermarket_id)` and **FKs** to:
+-   `products` (unique on `(product_id, supermarket_id)`)  
+    FKs:
     
     -   `supermarkets.id`
         
@@ -140,49 +161,50 @@ You’ll see structured `logger.info(...)` with `extra={...}` for:
     -   `store_categories.id`
         
 
-**Optional**
+### Optional
 
 -   `products_raw` for unnormalized JSON captures
     
 
-Tables are created via SQLAlchemy on import; in production use Alembic migrations.
+Tables are created via SQLAlchemy on import.  
+For production, use **Alembic** migrations.
 
 ----------
 
-## How scraping & upserting works
+## 🔄 How scraping & upserting works
 
-1.  **Adapter fetches** product cards (and details if enabled)
+1.  Adapter fetches product cards (and details if enabled)
     
-2.  **Normalization** into a standard dict
+2.  Normalization → standard dict
     
-3.  **Sanitization** (`mand.normalization.sanitize.clean_product_record`)
+3.  Sanitization (`mand.normalization.sanitize.clean_product_record`):
     
-    -   NFKC unicode normalization
+    -   Unicode normalization (NFKC)
         
-    -   removes zero-width/control chars
+    -   Remove zero-width/control chars
         
-    -   strips HTML tags
+    -   Strip HTML tags
         
-    -   collapses whitespace
+    -   Collapse whitespace
         
-    -   validates URLs / hex colors
+    -   Validate URLs/colors
         
-    -   dedupes keywords
+    -   Deduplicate keywords
         
-    -   clamps numeric ranges (e.g., 0–100% discounts)
+    -   Clamp numeric ranges (e.g. 0–100% discounts)
         
-4.  **Repository upsert** (`ProductRepository.upsert_flat`)
+4.  Repository upsert (`ProductRepository.upsert_flat`):
     
-    -   resolves/creates FK rows in `supermarkets`, `internal_categories`, `store_categories`
+    -   Resolves/creates FK rows
         
-    -   upserts into `products` (immediate write per product)
+    -   Upserts into `products` (immediate write per product)
         
 
-You don’t have to change scrapers when the schema evolves—the repository adapts.
+> Scrapers don’t need changes when schema evolves — repository adapts.
 
 ----------
 
-## Running both scrapers
+## ▶️ Running both scrapers
 
 `python - <<'PY' from mand.adapters.ah_nl import scrape_ah_nl_once
 from mand.adapters.jumbo_nl import scrape_jumbo_once print("AH:", scrape_ah_nl_once()) print("Jumbo:", scrape_jumbo_once())
@@ -190,9 +212,9 @@ PY`
 
 ----------
 
-## Scheduling (optional)
+## ⏰ Scheduling (optional)
 
-Using APScheduler for periodic runs:
+Using **APScheduler** for periodic runs:
 
 `# schedule_scrapes.py  import logging, sys from apscheduler.schedulers.blocking import BlockingScheduler
 
@@ -200,7 +222,7 @@ logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdo
 
 sched = BlockingScheduler(timezone="UTC")
 sched.add_job(scrape_ah_nl_once, "interval", minutes=30, id="ah")
-sched.add_job(scrape_jumbo_nl_once := scrape_jumbo_nl_once if  'scrape_jumbo_nl_once'  in  globals() else scrape_jumbo_once, "interval", minutes=30, id="jumbo")
+sched.add_job(scrape_jumbo_once, "interval", minutes=30, id="jumbo")
 
 sched.start()` 
 
@@ -210,42 +232,27 @@ Run:
 
 ----------
 
-## Prometheus (optional)
+## 📊 Prometheus (optional)
 
-`prometheus-client` is available. If you expose a web process, you can add:
+Expose metrics:
 
 `from prometheus_client import start_http_server
 start_http_server(9000) # /metrics` 
 
-…and use the `@timed` instrumentation already present in scraper entrypoints.
+…and use the `@timed` instrumentation already present.
 
 ----------
 
-## Troubleshooting
+## 🛠 Troubleshooting
 
 -   **403 / 429 responses**  
-    Retries are enabled. For AH, the client rotates `User-Agent` via `fake-useragent`. Make sure the package can initialize (some environments need outbound access once to seed).
+    Retries enabled. AH rotates `User-Agent` via `fake-useragent`.
     
 -   **Bad URLs / Images**  
-    Sanitizer will null out invalid URLs. Check adapter mapping if you need strict coverage.
+    Sanitizer nulls invalid URLs.
     
 -   **Duplicate products**  
-    Uniqueness is `(product_id, supermarket_id)`. If a product moves categories, it’s still a single row; only `category_slug`/FKs update.
+    Uniqueness = `(product_id, supermarket_id)`. If category changes, product remains same row.
     
 -   **Local dev limiting**  
-    Use `*_MAX_PAGES` to limit crawling while iterating.
-
-## TODO: extend base request class to include proxy rotation by default upon blocking/blacklisting    
-    
-
-----------
-
-## Development
-
--   Code style: follow standard Python conventions
-    
--   Add new supermarkets under `mand/adapters/<store_code>_xx/`
-    
--   Ensure each adapter exposes a `scrape_<store>_once()` entrypoint
-    
--   Keep normalization output consistent; the repository/sanitizer will do the rest
+    Use `*_MAX_PAGES` to reduce load during dev.
