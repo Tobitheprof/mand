@@ -301,7 +301,7 @@ def _to_record(d: Dict, mapper: InternalCategoryMapper) -> Optional[Dict]:
     internal_cat = mapper.map(SUPERMARKET["id"], (d.get("department") or pi.get("department") or ""), None)
 
     return {
-        "product_id": str(d.get("productId") or ""),
+        "product_id": "DIRK-"+str(d.get("productId") or ""),
         "name_full": title,
         "name_display": title,
         "description_full": summary,

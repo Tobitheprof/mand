@@ -1,16 +1,83 @@
 # repository.py
 from __future__ import annotations
 from typing import List, Dict, Any, Optional
+from decimal import Decimal
 
-from sqlalchemy import select
+from datetime import datetime, timezone
+
+from sqlalchemy import select, desc
 from sqlalchemy.orm import Session
 
 from mand.storage.db import SessionLocal, engine
-from mand.storage.models import Base, ProductRaw, Product, Supermarket, InternalCategory, StoreCategory
+from mand.storage.models import Base, ProductRaw, Product, Supermarket, InternalCategory, StoreCategory, ProductPriceHistory
 from mand.normalization.sanitize import clean_product_record
 
 # create tables (or run via Alembic in real env)
 Base.metadata.create_all(bind=engine)
+
+
+def _as_dec2(x) -> Decimal:
+    # defensively coerce to Decimal(18,2)-compatible values
+    if x in (None, "", "null"):
+        return Decimal("0.00")
+    if isinstance(x, Decimal):
+        return x.quantize(Decimal("0.01"))
+    try:
+        return Decimal(str(x)).quantize(Decimal("0.01"))
+    except Exception:
+        return Decimal("0.00")
+
+
+def _price_tuple_from_values(values: dict):
+    return (
+        _as_dec2(values.get("pricing_current")),
+        _as_dec2(values.get("pricing_original")),
+        bool(values.get("pricing_has_discount", False)),
+        _as_dec2(values.get("pricing_discount_percentage")) if values.get("pricing_discount_percentage") is not None else None,
+        (values.get("pricing_product_type") or "NOT_IN_BONUS"),
+    )
+
+
+def _maybe_log_price_history(s: Session, product: Product, values: dict, effective_at: datetime | None):
+    """
+    Insert a ProductPriceHistory row only if any 'meaningful' price field changed.
+    """
+    new_tuple = _price_tuple_from_values(values)
+
+    # Fetch last history row (if any)
+    last = s.execute(
+        select(ProductPriceHistory)
+        .where(ProductPriceHistory.product_db_id == product.id)
+        .order_by(desc(ProductPriceHistory.effective_at))
+        .limit(1)
+    ).scalar_one_or_none()
+
+    if last:
+        last_tuple = (
+            _as_dec2(last.pricing_current),
+            _as_dec2(last.pricing_original),
+            bool(last.pricing_has_discount),
+            _as_dec2(last.pricing_discount_percentage) if last.pricing_discount_percentage is not None else None,
+            last.pricing_product_type or "NOT_IN_BONUS",
+        )
+        # If nothing changed, do nothing
+        if last_tuple == new_tuple:
+            return
+
+    # Insert snapshot (first sighting OR changed)
+    s.add(ProductPriceHistory(
+        product_db_id=product.id,
+        supermarket_id=product.supermarket_id,
+        product_business_id=product.product_id,
+
+        pricing_current=new_tuple[0],
+        pricing_original=new_tuple[1],
+        pricing_has_discount=new_tuple[2],
+        pricing_discount_percentage=new_tuple[3],
+        pricing_product_type=new_tuple[4],
+
+        effective_at=effective_at or datetime.now(timezone.utc),
+    ))
 
 
 class _Cache:
@@ -194,7 +261,8 @@ class ProductRepository:
                     pricing_has_discount=pricing.get("has_discount", False),
                     pricing_discount_percentage=pricing.get("discount_percentage"),
                     pricing_product_type=pricing.get("product_type", "NOT_IN_BONUS"),
-
+                    
+                    
                     promo_has_promotion=promo.get("hasPromotion", False),
                     promo_text=promo.get("text"),
                     promo_type=promo.get("type"),
@@ -211,5 +279,23 @@ class ProductRepository:
                 if existing:
                     for k, v in values.items():
                         setattr(existing, k, v)
+                    
+                    # [PRICE TRACKING] compare with last history & log if changed
+                    _maybe_log_price_history(
+                        s,
+                        existing,
+                        values,
+                        effective_at=cp.get("last_scraped_at") or values.get("last_scraped_at")
+                    )
                 else:
-                    s.add(Product(**values))
+                    new_product = Product(**values)
+                    s.add(new_product)
+                    s.flush() 
+
+                    # [PRICE TRACKING] first sighting -> create initial history row
+                    _maybe_log_price_history(
+                        s,
+                        new_product,
+                        values,
+                        effective_at=cp.get("last_scraped_at") or values.get("last_scraped_at")
+                    )

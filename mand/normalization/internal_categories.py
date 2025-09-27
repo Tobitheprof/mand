@@ -1,66 +1,139 @@
-from typing import Dict, List, Tuple, Any, Optional
+from __future__ import annotations
+
+import logging
+from typing import Any, Dict, Mapping, Optional, Sequence
+
+from mand.config.settings import settings
+from mand.normalization.llm_category import LLMCategoryAssigner
+
+logger = logging.getLogger(__name__)
+
+
+INTERNAL_CATEGORY_NAMES: Sequence[str] = (
+    "Diepvries",
+    "Baby & Kind",
+    "Huisdier",
+    "Alcohol",
+    "Koffie & Thee",
+    "Dranken",
+    "Brood & Bakkerij",
+    "Zuivel",
+    "Vleeswaren & Kaas",
+    "Vlees & Vis",
+    "Vegan & Vegetarisch",
+    "Maaltijden",
+    "Wereldkeuken",
+    "Snacks & Snoep",
+    "Verzorging",
+    "Huishoudelijk",
+    "Groente & Fruit",
+    "Overig",
+)
+
 
 class InternalCategoryMapper:
-    INTERNAL_CATEGORIES: Dict[int, str] = {
-        1:  "Groente & Fruit",
-        2:  "Vlees & Vis",
-        3:  "Vegan & Vegetarisch",
-        4:  "Vleeswaren & Kaas",
-        5:  "Zuivel",
-        6:  "Brood & Bakkerij",
-        7:  "Maaltijden",
-        8:  "Wereldkeuken",
-        9:  "Snacks & Snoep",
-        10: "Diepvries",
-        11: "Dranken",
-        12: "Koffie & Thee",
-        13: "Alcohol",
-        14: "Verzorging",
-        15: "Huishoudelijk",
-        16: "Baby & Kind",
-        17: "Huisdier",
-        18: "Online aanbiedingen",
-        19: "Overig",
-    }
 
-    RULES: List[Tuple[int, List[str]]] = [
-        (1,  ["fruit", "groente", "vers sap", "sappen", "agf", "verse sappen"]),
-        (2,  ["vlees", "vis", "gevogelte", "kip", "seafood", "meat", "fish"]),
-        (3,  ["vegan", "vegetar", "plant-based"]),
-        (4,  ["vleeswaren", "charcut", "kaas", "cheese", "borrelplank"]),
-        (5,  ["zuivel", "yoghurt", "kwark", "melk", "dairy"]),
-        (6,  ["brood", "bakkerij", "gebak", "bakery"]),
-        (7,  ["maaltijd", "salade", "kant-en-klaar", "ready meal", "meal", "pasta", "rijst", "noedels"]),
-        (8,  ["wereldkeuken", "aziatisch", "mexicaans", "italiaans", "wereld"]),
-        (9,  ["snack", "chips", "snoep", "koek", "chocolade"]),
-        (10, ["diepvries", "vries", "frozen"]),
-        (11, ["drank", "frisdrank", "sap", "limonade"]),
-        (12, ["koffie", "thee", "espresso", "capsules"]),
-        (13, ["wijn", "bier", "alcohol", "gedistilleerd"]),
-        (14, ["verzorging", "huid", "haar", "douche", "scheer", "personal care"]),
-        (15, ["huishoud", "schoonmaak", "wasmiddel", "afwas", "wc", "papier"]),
-        (16, ["baby", "kind", "luier", "babyvoeding"]),
-        (17, ["huisdier", "kat", "hond", "pet"]),
-        (18, ["aanbied", "bonus", "promo", "korting", "actie", "deals", "offers"]),
-        (19, ["overig", "diversen", "other", "misc"]),
-    ]
 
-    SUPERMARKET_ALIASES: Dict[str, Dict[str, int]] = {
-        "ah": {
-            "Fruit, verse sappen": 1,
-        }
-    }
+    def __init__(self, store_rules: Optional[Mapping[str, Mapping[str, str]]] = None) -> None:
 
-    def map(self, supermarket_id: str, source_name: Optional[str], source_slug: Optional[str] = None) -> Dict[str, Any]:
-        text = f"{source_name or ''} {source_slug or ''}".strip().lower()
+        self.store_rules: Mapping[str, Mapping[str, str]] = store_rules or {}
+        self._llm = LLMCategoryAssigner()  
 
-        if supermarket_id in self.SUPERMARKET_ALIASES and source_name in self.SUPERMARKET_ALIASES[supermarket_id]:
-            cid = self.SUPERMARKET_ALIASES[supermarket_id][source_name]
-            return {"id": cid, "name": self.INTERNAL_CATEGORIES[cid]}
+        self._validate_rule_targets()
 
-        for cid, keys in self.RULES:
-            for key in keys:
-                if key in text:
-                    return {"id": cid, "name": self.INTERNAL_CATEGORIES[cid]}
 
-        return {"id": 19, "name": self.INTERNAL_CATEGORIES[19]}
+    def map_product(self, supermarket: str, product: Dict[str, Any]) -> Optional[str]:
+
+        cat = self._rule_based(supermarket, product)
+        if cat:
+            return cat
+
+        if settings.LLM_CATEGORY_ENABLED:
+            title, description = _extract_title_and_description(product)
+            if title or description:
+                llm_cat = self._llm.classify(
+                    supermarket=supermarket,
+                    title=title,
+                    description=description,
+                    categories=list(INTERNAL_CATEGORY_NAMES),
+                )
+                if llm_cat:
+                    return llm_cat
+
+        return None
+
+    def _rule_based(self, supermarket: str, product: Dict[str, Any]) -> Optional[str]:
+        if not supermarket:
+            return None
+
+        store_map = self.store_rules.get(supermarket)
+        if not store_map:
+            return None
+
+        raw_keys = (
+            "raw_category_path",
+            "raw_category_id",
+            "raw_category_name",
+            "category_path",
+            "category_id",
+            "category_name",
+        )
+
+        for k in raw_keys:
+            raw_val = product.get(k)
+            if not raw_val:
+                continue
+
+            cat = store_map.get(str(raw_val))
+            if cat:
+                if cat in INTERNAL_CATEGORY_NAMES:
+                    return cat
+                logger.warning("Rule mapped to non-canonical category %r for %s", cat, supermarket)
+                return None
+
+            if isinstance(raw_val, (list, tuple)) and raw_val:
+                last = str(raw_val[-1])
+                cat = store_map.get(last)
+                if cat:
+                    if cat in INTERNAL_CATEGORY_NAMES:
+                        return cat
+                    logger.warning("Rule mapped to non-canonical category %r for %s", cat, supermarket)
+                    return None
+
+        return None
+
+    def _validate_rule_targets(self) -> None:
+        if not self.store_rules:
+            return
+        ok = set(INTERNAL_CATEGORY_NAMES)
+        bad: int = 0
+        for sm, mapping in self.store_rules.items():
+            for raw, target in mapping.items():
+                if target not in ok:
+                    bad += 1
+                    logger.warning(
+                        "Store rule for %s -> %r maps to non-canonical category %r",
+                        sm, raw, target
+                    )
+        if bad:
+            logger.info("Found %d non-canonical rule targets; see warnings above.", bad)
+
+
+def _extract_title_and_description(product: Dict[str, Any]) -> tuple[str, str]:
+    title = (
+        product.get("name")
+        or product.get("title")
+        or product.get("name_display")
+        or product.get("name_full")
+        or ""
+    )
+
+    description = (
+        product.get("description")
+        or product.get("summary")
+        or product.get("description_display")
+        or product.get("description_full")
+        or ""
+    )
+
+    return str(title).strip(), str(description).strip()

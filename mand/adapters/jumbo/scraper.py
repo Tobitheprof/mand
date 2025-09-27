@@ -19,7 +19,11 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Iterable
+from decimal import Decimal
+from fake_useragent import UserAgent
+
+
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -32,6 +36,8 @@ from mand.storage.repository import ProductRepository
 from mand.monitoring.instrumentation import timed
 
 logger = logging.getLogger(__name__)
+
+ua = UserAgent()
 
 # -----------------------------
 # Supermarket meta
@@ -60,7 +66,7 @@ HEADERS = {
     "Accept": "application/json",
     "Origin": "https://www.jumbo.com",
     "Referer": "https://www.jumbo.com/",
-    "User-Agent": "Mozilla/5.0",
+    "User-Agent": ua.random,
 }
 
 # -----------------------------
@@ -460,17 +466,49 @@ def _build_keywords(prod: Dict[str, Any]) -> List[str]:
     return sorted(base)[:25]
 
 def _promotion_data(prod: Dict[str, Any]) -> Dict[str, Any]:
+    def _as_list(x: Any) -> list:
+        """Return [] | [item, ...] from list/dict/None."""
+        if x is None:
+            return []
+        if isinstance(x, list):
+            return x
+        if isinstance(x, dict):
+            return [x]
+        return []
+
+    def _first_text(objs: Iterable[Dict[str, Any]], keys=("shortTitle","title","description","text","promoText","label")) -> Optional[str]:
+        """Pick the first non-empty text across a list of dicts and candidate keys."""
+        for obj in objs:
+            if not isinstance(obj, dict):
+                continue
+            # Some APIs wrap by locale: {"nl": {...}, "en": {...}}
+            locale_wrapped = [v for v in obj.values() if isinstance(v, dict)]
+            if locale_wrapped:
+                for inner in locale_wrapped:
+                    for k in keys:
+                        t = inner.get(k)
+                        if t:
+                            return t
+            # Flat dict case
+            for k in keys:
+                t = obj.get(k)
+                if t:
+                    return t
+        return None
+
     promos = prod.get("promotions") or []
-    has = bool(promos)
-    first = promos[0] if has else {}
-    text = None
-    dt_texts = first.get("durationTexts") or []
-    if dt_texts:
-        for k in ("shortTitle", "title", "description"):
-            t = dt_texts[0].get(k)
-            if t:
-                text = t
-                break
+    # `promotions` can be a dict or a list
+    promos_list = _as_list(promos)
+    first = promos_list[0] if promos_list else {}
+
+    # Duration texts can be a list of dicts, a single dict, or locale map
+    dt_raw = first.get("durationTexts") or first.get("durationText") or []
+    dt_candidates = _as_list(dt_raw)
+
+    # Also consider top-level promo fields as fallbacks
+    text = _first_text(dt_candidates) or _first_text([first])  # fallback to fields like title/text on `first`
+
+    # Quantity/volume discounts can be list or single dict
     qty = {
         "requiresMinimumQuantity": False,
         "minimumQuantity": None,
@@ -478,23 +516,36 @@ def _promotion_data(prod: Dict[str, Any]) -> Dict[str, Any]:
         "userInstruction": None,
         "actionRequired": False,
     }
+
     vols = first.get("volumeDiscounts") or []
-    if vols:
-        v0 = vols[0]
+    vols_list = _as_list(vols)
+    if vols_list:
+        v0 = vols_list[0] if isinstance(vols_list[0], dict) else {}
+        # Typical keys seen across retailers
+        min_q = v0.get("volume") or v0.get("buy") or v0.get("minQuantity")
+        try:
+            min_q = int(min_q) if min_q is not None else None
+        except (TypeError, ValueError):
+            min_q = None
+
         qty.update(
             {
-                "requiresMinimumQuantity": True,
-                "minimumQuantity": v0.get("volume"),
-                "targetQuantity": v0.get("volume"),
-                "actionRequired": True,
+                "requiresMinimumQuantity": bool(min_q and min_q > 1),
+                "minimumQuantity": min_q,
+                "targetQuantity": min_q,
+                "userInstruction": v0.get("userInstruction") or first.get("actionText"),
+                "actionRequired": bool(min_q and min_q > 1),
             }
         )
+
+    has = bool(promos_list)
+
     return {
         "hasPromotion": has,
         "text": text,
-        "type": first.get("group"),
+        "type": first.get("group") or first.get("type"),
         "category": None,
-        "savingsType": None,
+        "savingsType": first.get("savingsType"),
         "quantityRequirements": qty,
         "isProcessed": True,
     }
@@ -508,7 +559,7 @@ def _calc_pricing_and_type(prod: Dict[str, Any]) -> Tuple[Dict[str, Any], Option
     original = p
     discount_pct: Optional[float] = None
     if has_discount and original > 0:
-        discount_pct = round((original - current) / original * 100.0, 2)
+        discount_pct = float(round(((original - current) / original) * Decimal(100), 2))
 
     promos = prod.get("promotions") or []
     start, end = _first_promo_dates(promos)
@@ -535,6 +586,7 @@ def _calc_pricing_and_type(prod: Dict[str, Any]) -> Tuple[Dict[str, Any], Option
         start,
         end,
     )
+
 
 # -----------------------------
 # Search pagination (page-by-page with logging)
@@ -644,7 +696,7 @@ def _to_record(stub_or_detail: Dict[str, Any], detail: Optional[Dict[str, Any]],
     internal_cat = mapper.map(SUPERMARKET["id"], category_name, None)
 
     return {
-        "product_id": str(prod.get("id") or stub_or_detail.get("id") or ""),
+        "product_id": "JUMBO-"+str(prod.get("id") or stub_or_detail.get("id") or ""),
         "name_full": title,
         "name_display": title,
         "description_full": desc,

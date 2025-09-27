@@ -133,3 +133,39 @@ class Product(Base):
         UniqueConstraint("product_id", "supermarket_id", name="uq_product_business_key"),
         Index("ix_products_supermarket_category", "supermarket_id", "category_slug"),
     )
+
+
+class ProductPriceHistory(Base):
+    """
+    Immutable price history snapshots. One row whenever a product's pricing
+    *meaningfully changes* (or on first sighting).
+    """
+    __tablename__ = "product_price_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # FK to products for easy joins
+    product_db_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    supermarket_id: Mapped[int] = mapped_column(Integer, index=True)
+    # Store the business key redundantly for convenience/fast filters
+    product_business_id: Mapped[str] = mapped_column(String(64), index=True)
+
+    pricing_current: Mapped[Numeric] = mapped_column(Numeric(18, 2))
+    pricing_original: Mapped[Numeric] = mapped_column(Numeric(18, 2))
+    pricing_has_discount: Mapped[bool] = mapped_column(Boolean, default=False)
+    pricing_discount_percentage: Mapped[Optional[Numeric]] = mapped_column(Numeric(8, 2), nullable=True)
+    pricing_product_type: Mapped[str] = mapped_column(String(32))  # BONUS / NOT_IN_BONUS / EXPIRED_BONUS
+
+    # when this snapshot became effective (use scraper timestamp if available)
+    effective_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True
+    )
+
+    __table_args__ = (
+        Index("ix_pricehist_product_time", "product_db_id", "effective_at"),
+        Index("ix_pricehist_supermarket", "supermarket_id", "product_business_id"),
+    )

@@ -242,7 +242,7 @@ def _to_record(basic: Dict, dprod: Optional[Dict], mapper: InternalCategoryMappe
     }
 
     return {
-        "product_id": str(basic.get("id","")),
+        "product_id": "AH-"+str(basic.get("id","")),
         "name_full": title,
         "name_display": title,
         "description_full": summary,
