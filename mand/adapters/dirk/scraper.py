@@ -14,6 +14,7 @@ from mand.normalization.internal_categories import InternalCategoryMapper
 from mand.normalization.cleaners import normalize_price
 from mand.storage.repository import ProductRepository
 from mand.monitoring.instrumentation import timed
+from mand.shared.proxy_manager import get_proxy_manager
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ class SeenIdCache:
 
 # ---------------- HTTP client ----------------
 class DirkClient:
-    def __init__(self, workers: int):
+    def __init__(self, workers: int, proxy_manager=None):
         self.ua = UserAgent()
         self.session = requests.Session()
         self.session.headers.update({
@@ -147,24 +148,51 @@ class DirkClient:
         retry = Retry(
             total=3, backoff_factor=0.4,
             status_forcelist=(403, 429, 500, 502, 503, 504),
-            allowed_methods=frozenset(["GET", "POST"])
+            allowed_methods=frozenset(["GET", "POST"]),
         )
         adapter = HTTPAdapter(max_retries=retry, pool_connections=workers, pool_maxsize=workers)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
         self.workers = workers
 
+        # --- Proxy handling via shared manager (one proxy per client/session) ---
+        self.proxy_manager = proxy_manager or get_proxy_manager()
+        self.session_id = f"dirk:{id(self)}"
+        self.current_proxy: Optional[str] = self.proxy_manager.get_proxy_for_session(self.session_id)
+
+    def _proxy_dict(self) -> Optional[Dict[str, str]]:
+        if not self.current_proxy:
+            return None
+        return {"http": self.current_proxy, "https": self.current_proxy}
+
+    def _handle_block_or_error(self, mark_bad: bool = False):
+        # Rotate UA
+        self.session.headers["User-Agent"] = self.ua.random
+        # Optionally mark the current proxy as bad (e.g., on network error)
+        if mark_bad and self.current_proxy:
+            self.proxy_manager.mark_proxy_bad(self.current_proxy)
+        # Rotate to a new proxy for this session
+        self.current_proxy = self.proxy_manager.rotate_proxy_for_session(self.session_id)
+        logger.info(f"[DirkClient] Rotated proxy for {self.session_id} -> {self.current_proxy}")
+
     def post(self, payload: Dict) -> Optional[Dict]:
         try:
-            r = self.session.post(GQL, json=payload, timeout=25)
-            if r.status_code == 403:
-                self.session.headers["User-Agent"] = self.ua.random
+            r = self.session.post(GQL, json=payload, timeout=25, proxies=self._proxy_dict())
+            if r.status_code in (403, 429):
+                # Blocked/throttled → rotate proxy for this session
+                self._handle_block_or_error(mark_bad=False)
             r.raise_for_status()
             return r.json()
         except Exception as e:
             logger.warning("POST failed", extra={"err": str(e)})
+            # Network/other error → mark current proxy bad and rotate
+            self._handle_block_or_error(mark_bad=True)
             return None
 
+    def close(self):
+        self.proxy_manager.free_session(self.session_id)
+        self.session.close()
+        
 # ---------------- helpers ----------------
 def _ts() -> str:
     return datetime.now(timezone.utc).isoformat()

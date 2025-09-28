@@ -34,6 +34,7 @@ from mand.normalization.internal_categories import InternalCategoryMapper
 from mand.normalization.cleaners import normalize_price
 from mand.storage.repository import ProductRepository
 from mand.monitoring.instrumentation import timed
+from mand.shared.proxy_manager import get_proxy_manager
 
 logger = logging.getLogger(__name__)
 
@@ -366,7 +367,7 @@ query productDetail($sku: String!) {
 # HTTP client
 # -----------------------------
 class JumboClient:
-    def __init__(self):
+    def __init__(self, proxy_manager=None):
         self.session = requests.Session()
         retries = Retry(
             total=3,
@@ -377,6 +378,24 @@ class JumboClient:
         )
         self.session.mount("https://", HTTPAdapter(max_retries=retries))
 
+        # --- proxy handling via shared manager (one proxy per client/session) ---
+        self.proxy_manager = proxy_manager or get_proxy_manager()
+        self.session_id = f"jumbo:{id(self)}"
+        self.current_proxy: Optional[str] = self.proxy_manager.get_proxy_for_session(self.session_id)
+
+    def _proxy_dict(self) -> Optional[Dict[str, str]]:
+        if not self.current_proxy:
+            return None
+        return {"http": self.current_proxy, "https": self.current_proxy}
+
+    def _rotate_proxy(self, mark_bad: bool):
+        if mark_bad and self.current_proxy:
+            # permanently mark this proxy bad for the pool
+            self.proxy_manager.mark_proxy_bad(self.current_proxy)
+        # get a replacement for this session
+        self.current_proxy = self.proxy_manager.rotate_proxy_for_session(self.session_id)
+        logger.info(f"[JumboClient] Rotated proxy for {self.session_id} -> {self.current_proxy}")
+
     def post(self, json_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         try:
             r = self.session.post(
@@ -384,16 +403,33 @@ class JumboClient:
                 json=json_payload,
                 headers=HEADERS,
                 timeout=REQUEST_TIMEOUT,
+                proxies=self._proxy_dict(),
             )
+
+            # throttle/block → rotate proxy (keep old as maybe-usable, so don't mark_bad)
+            if r.status_code in (403, 429):
+                self._rotate_proxy(mark_bad=False)
+
             r.raise_for_status()
             data = r.json()
+
+            # If GraphQL returns errors, you may want to rotate as well (optional)
             if isinstance(data, dict) and data.get("errors"):
                 logger.warning("Jumbo GQL errors", extra={"errors": data["errors"]})
+                # Optional: rotate without marking bad (errors may be query-related)
+                # self._rotate_proxy(mark_bad=False)
                 return None
+
             return data.get("data")
         except Exception as e:
             logger.warning("Jumbo POST failed", extra={"err": str(e)})
+            # network/transport-level failure → mark proxy bad and rotate
+            self._rotate_proxy(mark_bad=True)
             return None
+
+    def close(self):
+        self.proxy_manager.free_session(self.session_id)
+        self.session.close()
 
 # -----------------------------
 # Helpers

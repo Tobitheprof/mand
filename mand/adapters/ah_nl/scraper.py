@@ -13,6 +13,7 @@ from mand.normalization.internal_categories import InternalCategoryMapper
 from mand.normalization.cleaners import normalize_price
 from mand.storage.repository import ProductRepository
 from mand.monitoring.instrumentation import timed
+from mand.shared.proxy_manager import get_proxy_manager
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +24,36 @@ SUPERMARKET = {
 }
 
 DEFAULT_CATS = [
-    {"id": "20885", "slug": "fruit-verse-sappen", "name": "Fruit, verse sappen"},
-    {"id": "6401",  "slug": "groente-aardappelen", "name": "Groente & aardappelen"},
-    {"id": "1301",  "slug": "maaltijden-salades",  "name": "Maaltijden & salades"},
-    {"id": "9344",  "slug": "vlees",               "name": "Vlees"},
-    {"id": "1651",  "slug": "vis",                 "name": "Vis"},
-    {"id": "7582",  "slug": "zuivel",              "name": "Zuivel"},
-    {"id": "1304",  "slug": "brood-gebak",         "name": "Brood & gebak"},
-    {"id": "1270",  "slug": "ontbijt",             "name": "Ontbijt"},
+    {"id": "20603", "slug": "ah-voordeelshop",               "name": "AH Voordeelshop"},
+    {"id": "6401",  "slug": "groente-aardappelen",           "name": "Groente, aardappelen"},
+    {"id": "20885", "slug": "fruit-verse-sappen",            "name": "Fruit, verse sappen"},
+    {"id": "1301",  "slug": "maaltijden-salades",            "name": "Maaltijden, salades"},
+    {"id": "9344",  "slug": "vlees",                         "name": "Vlees"},
+    {"id": "1651",  "slug": "vis",                           "name": "Vis"},
+    {"id": "20128", "slug": "vegetarisch-vegan-en-plantaardig", "name": "Vegetarisch, vegan en plantaardig"},
+    {"id": "5481",  "slug": "vleeswaren",                    "name": "Vleeswaren"},
+    {"id": "1192",  "slug": "kaas",                          "name": "Kaas"},
+    {"id": "1730",  "slug": "zuivel-eieren",                 "name": "Zuivel, eieren"},
+    {"id": "1355",  "slug": "bakkerij",                      "name": "Bakkerij"},
+    {"id": "4246",  "slug": "glutenvrij",                    "name": "Glutenvrij"},
+    {"id": "20824", "slug": "borrel-chips-snacks",           "name": "Borrel, chips, snacks"},
+    {"id": "1796",  "slug": "pasta-rijst-wereldkeuken",      "name": "Pasta, rijst, wereldkeuken"},
+    {"id": "6409",  "slug": "soepen-sauzen-kruiden-olie",    "name": "Soepen, sauzen, kruiden, olie"},
+    {"id": "20129", "slug": "koek-snoep-chocolade",          "name": "Koek, snoep, chocolade"},
+    {"id": "6405",  "slug": "ontbijtgranen-beleg",           "name": "Ontbijtgranen, beleg"},
+    {"id": "2457",  "slug": "tussendoortjes",                "name": "Tussendoortjes"},
+    {"id": "5881",  "slug": "diepvries",                     "name": "Diepvries"},
+    {"id": "1043",  "slug": "koffie-thee",                   "name": "Koffie, thee"},
+    {"id": "20130", "slug": "frisdrank-sappen-water",        "name": "Frisdrank, sappen, water"},
+    {"id": "6406",  "slug": "bier-wijn-aperitieven",         "name": "Bier, wijn, aperitieven"},
+    {"id": "1045",  "slug": "drogisterij",                   "name": "Drogisterij"},
+    {"id": "11717", "slug": "gezondheid-en-sport",           "name": "Gezondheid en sport"},
+    {"id": "1165",  "slug": "huishouden",                    "name": "Huishouden"},
+    {"id": "18521", "slug": "baby-en-kind",                  "name": "Baby en kind"},
+    {"id": "18519", "slug": "huisdier",                      "name": "Huisdier"},
+    {"id": "1057",  "slug": "koken-tafelen-vrije-tijd",      "name": "Koken, tafelen, vrije tijd"}
 ]
+
 
 BASE = "https://www.ah.nl"
 SEARCH = BASE + "/zoeken/api/products/search"
@@ -56,7 +78,7 @@ GQL_QUERY = {
 }
 
 class AHClient:
-    def __init__(self, workers: int):
+    def __init__(self, workers: int, proxy_manager=None):
         self.ua = UserAgent()
         self.session = requests.Session()
         self.session.headers.update({
@@ -68,35 +90,72 @@ class AHClient:
             "Cache-Control": "no-cache",
             "Pragma": "no-cache",
         })
-        retry = Retry(total=3, backoff_factor=0.5,
-                      status_forcelist=(403, 429, 500, 502, 503, 504),
-                      allowed_methods=frozenset(["GET", "POST"]))
+
+        retry = Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=(403, 429, 500, 502, 503, 504),
+            allowed_methods=frozenset(["GET", "POST"]),
+        )
         adapter = HTTPAdapter(max_retries=retry, pool_connections=workers, pool_maxsize=workers)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
         self.workers = workers
 
+        # proxy manager (singleton from shared)
+        self.proxy_manager = proxy_manager or get_proxy_manager()
+        # use id(self) or a string name — must be unique per client instance
+        self.session_id = f"ah:{id(self)}"
+        self.current_proxy = self.proxy_manager.get_proxy_for_session(self.session_id)
+
+    def _proxy_dict(self) -> Optional[Dict[str, str]]:
+        if not self.current_proxy:
+            return None
+        return {"http": self.current_proxy, "https": self.current_proxy}
+
+    def _handle_block(self, resp):
+        """Handle blocked responses: rotate UA and ask proxy manager for a new proxy."""
+        # rotate UA
+        self.session.headers["User-Agent"] = self.ua.random
+        # rotate proxy for this session
+        newp = self.proxy_manager.rotate_proxy_for_session(self.session_id)
+        self.current_proxy = newp
+        logger.info(f"Proxy rotated for session {self.session_id} -> {self.current_proxy}")
+
     def get(self, url: str, **params) -> Optional[Dict]:
         try:
-            r = self.session.get(url, params=params, timeout=20)
-            if r.status_code == 403:
-                self.session.headers["User-Agent"] = self.ua.random
+            r = self.session.get(url, params=params, timeout=20, proxies=self._proxy_dict())
+            if r.status_code in (403, 429):
+                self._handle_block(r)
             r.raise_for_status()
             return r.json()
         except Exception as e:
             logger.warning("GET failed", extra={"url": url, "err": str(e)})
+            # mark current proxy as bad and rotate
+            if self.current_proxy:
+                logger.info("Marking current proxy bad and rotating.")
+                self.proxy_manager.mark_proxy_bad(self.current_proxy)
+                self.current_proxy = self.proxy_manager.rotate_proxy_for_session(self.session_id)
             return None
 
     def post(self, payload: Dict) -> Optional[Dict]:
         try:
-            r = self.session.post(GQL, json=payload, timeout=25)
-            if r.status_code == 403:
-                self.session.headers["User-Agent"] = self.ua.random
+            r = self.session.post(GQL, json=payload, timeout=25, proxies=self._proxy_dict())
+            if r.status_code in (403, 429):
+                self._handle_block(r)
             r.raise_for_status()
             return r.json()
         except Exception as e:
             logger.warning("POST failed", extra={"err": str(e)})
+            if self.current_proxy:
+                self.proxy_manager.mark_proxy_bad(self.current_proxy)
+                self.current_proxy = self.proxy_manager.rotate_proxy_for_session(self.session_id)
             return None
+
+    def close(self):
+        # free mapping when done
+        self.proxy_manager.free_session(self.session_id)
+        self.session.close()
 
 # ---------- helpers ----------
 def _ts() -> str:

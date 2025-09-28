@@ -1,11 +1,14 @@
 import os
 from dataclasses import dataclass
+from dotenv import load_dotenv
+
+load_dotenv()
 
 @dataclass(frozen=True)
 class Settings:
     PG_DSN: str = os.getenv(
         "PG_DSN",
-        "postgresql+psycopg2://postgres:Bl%403e345@localhost:5432/mand"
+        "postgresql+postgresql://postgres:3EcNO32CT9dB@db.nuodavvfvkvenxbjeyzn.supabase.co:5432/postgres"
     )
 
     SCHEDULER_TIMEZONE: str = os.getenv("SCHEDULER_TIMEZONE", "Europe/Amsterdam")

@@ -118,6 +118,21 @@ class InternalCategoryMapper:
         if bad:
             logger.info("Found %d non-canonical rule targets; see warnings above.", bad)
 
+    
+    def map(self, supermarket: str, raw_category: Optional[str], product: Optional[Dict[str, Any]] = None) -> Optional[str]:
+        """
+        Compat wrapper so existing scrapers don't break.
+        - supermarket: store id like "ah", "jumbo", "dirk"
+        - raw_category: the category string the scraper extracted
+        - product: optional product dict (if the caller already has one)
+        """
+        merged: Dict[str, Any] = dict(product or {})
+        if raw_category:
+            # make it discoverable by the rule-based mapper
+            merged.setdefault("raw_category_name", raw_category)
+            merged.setdefault("category_name", raw_category)
+        return self.map_product(supermarket, merged)
+
 
 def _extract_title_and_description(product: Dict[str, Any]) -> tuple[str, str]:
     title = (
@@ -137,3 +152,5 @@ def _extract_title_and_description(product: Dict[str, Any]) -> tuple[str, str]:
     )
 
     return str(title).strip(), str(description).strip()
+
+
